@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Lista de Compras</title>
+</head>
+
+<body>
+    <h1>Minha Lista de Compras</h1>
+    <input type="text" id="novoItem" placeholder="Digite um item">
+    <button id="adicionarBtn">Adicionar</button>
+    
+    <h2>Itens Pendentes:</h2>
+    <ul id="listaComprasPendentes"></ul>
+    
+    <h2>Itens Comprados:</h2>
+    <ul id="listaComprasComprados"></ul>
+
+    <script>
+        // Funções para interagir com o backend
+
+        const obterItens = () => fetch('/itens').then(res => res.json());
+
+        const adicionarItem = (nome) => fetch('/itens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome, comprado: false })
+        });
+
+        const removerItem = (index) => {
+            fetch(`/itens/${index}`, { method: 'DELETE' })
+                .then(async () => {
+                    renderizarLista(await obterItens());
+                })
+                .catch(error => console.error(error));
+        };
+
+        const atualizarItem = (index, comprado) => {
+            fetch(`/itens/${index}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comprado })
+            })
+            .then(async () => {
+                renderizarLista(await obterItens());
+            })
+            .catch(error => console.error(error));
+        };
+
+        // Função para renderizar a lista
+        function renderizarLista(itens) {
+            const listaComprasPendentes = document.getElementById('listaComprasPendentes');
+            const listaComprasComprados = document.getElementById('listaComprasComprados');
+
+            // Separar itens pendentes e comprados
+            const itensPendentes = itens.filter(item => !item.comprado);
+            const itensComprados = itens.filter(item => item.comprado);
+
+            // Renderiza a lista de itens pendentes
+            listaComprasPendentes.innerHTML = itensPendentes.map((item, index) => `
+                <li>
+                    <input type="checkbox" onchange="atualizarItem(${index}, this.checked)">
+                    ${item.nome}  
+                    <button onclick="removerItem(${index})">Remover</button> 
+                </li>
+            `).join('');
+
+            // Renderiza a lista de itens comprados
+            listaComprasComprados.innerHTML = itensComprados.map((item, index) => `
+                <li>
+                    <input type="checkbox" checked onchange="atualizarItem(${index}, this.checked)">
+                    ${item.nome}  
+                    <button onclick="removerItem(${index})">Remover</button> 
+                </li>
+            `).join('');
+        }
+
+        // Evento do botão "Adicionar"
+        document.getElementById('adicionarBtn').addEventListener('click', async () => {
+            const novoItemInput = document.getElementById('novoItem');
+            const novoItem = novoItemInput.value.trim();
+            if (novoItem) {
+                try {
+                    await adicionarItem(novoItem);
+                    renderizarLista(await obterItens());
+                    novoItemInput.value = '';
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        });
+
+        // Carrega a lista inicial
+        window.onload = async () => {
+            try {
+                renderizarLista(await obterItens());
+            } catch (error) {
+                console.error(error);
+            }
+        };
+    </script>
+</body>
+
+</html>
